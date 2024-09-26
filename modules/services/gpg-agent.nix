@@ -30,6 +30,18 @@ let
     $env.SSH_AUTH_SOCK = ($env.SSH_AUTH_SOCK? | default (${gpgPkg}/bin/gpgconf --list-dirs agent-ssh-socket))
   '';
 
+  # for darwin systems, we explicitly override this as, by default, the system ssh-agent
+  # runs as a daemon, so this is already set.
+  sshAuthSockStr =
+    let sockPathCmd = "$(${gpgPkg}/bin/gpgconf --list-dirs agent-ssh-socket)";
+    in if pkgs.stdenv.hostPlatform.isLinux then ''
+      if [[ -z "$SSH_AUTH_SOCK" ]]; then
+        export SSH_AUTH_SOCK="${sockPathCmd}"
+      fi
+    '' else ''
+      export SSH_AUTH_SOCK="${sockPathCmd}"
+    '';
+
   # mimic `gpgconf` output for use in the service definitions.
   # we cannot use `gpgconf` directly because it heavily depends on system
   # state, but we need the values at build time. original:
@@ -280,11 +292,7 @@ in {
           "pinentry-program ${lib.getExe cfg.pinentryPackage}"
           ++ [ cfg.extraConfig ]);
 
-      home.sessionVariablesExtra = optionalString cfg.enableSshSupport ''
-        if [[ -z "$SSH_AUTH_SOCK" ]]; then
-          export SSH_AUTH_SOCK="$(${gpgPkg}/bin/gpgconf --list-dirs agent-ssh-socket)"
-        fi
-      '';
+      home.sessionVariablesExtra = optionalString cfg.enableSshSupport sshAuthSockStr;
 
       programs.bash.initExtra = mkIf cfg.enableBashIntegration gpgInitStr;
       programs.zsh.initExtra = mkIf cfg.enableZshIntegration gpgInitStr;
