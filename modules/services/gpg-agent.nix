@@ -360,8 +360,8 @@ in {
         launchd.agents.gpg-agent = {
           enable = true;
           config = {
-            ProgramArguments = [ "${gpgPkg}/bin/gpg-agent" "--supervised" ]
-              ++ optional cfg.verbose "--verbose";
+            ProgramArguments = [ "${gpgPkg}/bin/gpgconf" "--launch" "gpg-agent" ]
+              ++ optionals cfg.verbose [ "--verbose" ];
             EnvironmentVariables = { GNUPGHOME = homedir; };
             KeepAlive = {
               Crashed = true;
